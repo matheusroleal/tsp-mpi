@@ -75,6 +75,16 @@ int TourContainCity(tour* tour_t, int city) {
   return 0;
 }
 
+int TourContainCityOrHometown(tour* tour_t, int city) {
+  for(int i=0; i < tour_t->n_cities; i++) {
+
+    if(tour_t->cities[i] == city) { 
+      return 1; 
+    }
+  }
+  return 0;
+}
+
 int BestTour(tour* tour_t, tour* best) {
   // initial case, when best empty
   if(best->n_cities == 0) { 

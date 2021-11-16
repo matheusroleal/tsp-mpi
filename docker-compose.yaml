@@ -1,0 +1,9 @@
+version: '3'
+services:
+    tsp-parallel:
+        build:
+          context: .
+        container_name: tsp-parallel
+        command: make run-mpi-cinco
+        volumes:
+            - .:/app

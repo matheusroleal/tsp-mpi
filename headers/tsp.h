@@ -2,6 +2,7 @@
 #include "../headers/stack.h"
 #include "../headers/tour.h"
 #include "../headers/graph.h"
+#include "../headers/queue.h"
 
 typedef struct term_t term;
 
@@ -11,5 +12,9 @@ void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, pthread_mute
 
 void InitializeStacks(int root_node, int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t);
 
+void InitializeStacks2(int root_node, int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t);
+
 void FillStacks(int root_node, int num_threads, int stack_size, stack* stacks[num_threads], graph* graph_t);
+
+void FillStacks2(int root_node, int num_threads, int stack_size, stack* stacks[num_threads], graph* graph_t);
 

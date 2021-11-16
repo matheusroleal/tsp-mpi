@@ -36,8 +36,8 @@ void ThreadsSplit(int root_node, int num_threads, stack** stacks, graph* graph_t
   int n_nodes = NumNodes(graph_t);
   int stack_size = n_nodes * n_nodes;
 
-  InitializeStacks(root_node, num_threads, stack_size, stacks, graph_t);
-  FillStacks(root_node, num_threads, stack_size, stacks, graph_t);
+  InitializeStacks2(root_node, num_threads, stack_size, stacks, graph_t);
+  FillStacks2(root_node, num_threads, stack_size, stacks, graph_t);
 
   for(int i=0; i < num_threads; i++) {
     PrintStackInfo(stacks[i]);
@@ -74,10 +74,7 @@ void ProcessSplit(int root_node, int num_process, stack** stacks, graph* graph_t
 }
 
 
-void InitializeInstance() {
-  ReadNThreads(&threads_num);
-
-  ReadNCities(&n_cities);
+void InitializeInstance(char * path_matrix_file) {
 
   nodes = calloc(n_cities, sizeof(int));
   if(!nodes) { 
@@ -101,16 +98,22 @@ void InitializeInstance() {
     }
   }
 
-  char word[256];
-  ReadMatrixPath(word);
-
-  ReadMatrix(n_cities, n_cities, adj_m, word);
+  ReadMatrix(n_cities, n_cities, adj_m, path_matrix_file);
 }
 
 int main(int argc, char** argv) {
   int num_process, process_rank;
 
-  InitializeInstance();
+  if (argc < 4) {
+    printf("Missing parameters.\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
+    exit(-1); 
+  }
+
+  threads_num = atoi(argv[1]);
+  n_cities = atoi(argv[2]);
+  char* path_to_matrix_file = argv[3];
+
+  InitializeInstance(path_to_matrix_file);
 
   ShowMatrix(n_cities, adj_m);
 

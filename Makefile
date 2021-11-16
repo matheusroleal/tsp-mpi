@@ -12,7 +12,7 @@ PROJECT := Parallel TSP
 CFLAGS = -Wall
 
 ## Object files
-_OBJ_FILES = tour.o stack.o graph.o tsp.o utils.o
+_OBJ_FILES = tour.o stack.o graph.o tsp.o utils.o queue.o
 OBJ_FILES = $(_OBJ_FILES:%.o=./src/obj/%.o)
 
 ## Build imagem Docker
@@ -21,7 +21,7 @@ build:
 
 ## Run project
 run: build
-	docker run -it parallel-tsp ./main
+	docker-compose up
 
 tour: ./src/tour.c ./headers/tour.h
 	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o
@@ -38,6 +38,9 @@ tsp: ./src/tsp.c ./headers/tsp.h
 utils: ./src/utils.c ./headers/utils.h
 	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o
 
+queue: ./src/queue.c ./headers/queue.h
+	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o
+
 ## Make project dependencies
 dependencies:
 	make tour
@@ -45,6 +48,7 @@ dependencies:
 	make graph
 	make tsp
 	make utils
+	make queue
 
 ## Make entire app
 app:
@@ -55,6 +59,18 @@ app:
 mpiapp:
 	make dependencies
 	mpicc -pthread -o main main.c $(OBJ_FILES)
+
+## Make MpiApp and run with cinco.txt instance
+run-mpi-cinco: mpiapp
+	./main 4 5 instances/cinco.txt
+
+## Make MpiApp and run with gr17.txt instance
+run-mpi-gr17: mpiapp
+	./main 4 17 instances/gr17.txt
+
+## Make MpiApp and run with quinze.txt instance
+run-mpi-quinze: mpiapp
+	./main 4 15 instances/quinze.txt
 
 ## Commands
 help:
