@@ -180,7 +180,7 @@ void FillStacks2(int root_node, int num_threads, int stack_size, stack* stacks[n
   stack* current_stack;
   Queue * tours_queue = CreateQueue();
 
-  printf("\n\nFilling stacks... \n\n");
+  printf("\n\nFilling stacks with initial tours... \n\n");
   initial_tour = CreateTour(num_nodes + 1);
   AddCity(initial_tour, graph_t, root_node);
 
@@ -217,9 +217,6 @@ void FillStacks2(int root_node, int num_threads, int stack_size, stack* stacks[n
 
     PushCopy(current_stack, current_tour);
 
-    printf("\n------- STACK(index=%d) -------\n", stack_index % num_threads);
-    PrintStackInfo(current_stack);
-    printf("-----------------------\n");
     stack_index++;
   }
 

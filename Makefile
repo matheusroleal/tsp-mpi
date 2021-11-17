@@ -20,7 +20,7 @@ build:
 	docker build -t parallel-tsp .
 
 ## Run project
-run: build
+run:
 	docker-compose up
 
 tour: ./src/tour.c ./headers/tour.h
@@ -60,17 +60,29 @@ mpiapp:
 	make dependencies
 	mpicc -pthread -o main main.c $(OBJ_FILES)
 
+## Make App and run with cinco.txt instance
+run-threads-cinco: app
+	./main 4 5 instances/cinco.txt
+
+## Make App and run with gr17.txt instance
+run-threads-gr17: app
+	./main 4 17 instances/gr17.txt
+
+## Make App and run with quinze.txt instance
+run-threads-quinze: app
+	./main 4 15 instances/quinze.txt
+
 ## Make MpiApp and run with cinco.txt instance
 run-mpi-cinco: mpiapp
-	./main 4 5 instances/cinco.txt
+	mpiexec -np 4 ./main 4 5 instances/cinco.txt
 
 ## Make MpiApp and run with gr17.txt instance
 run-mpi-gr17: mpiapp
-	./main 4 17 instances/gr17.txt
+	mpiexec -np 4 ./main 4 17 instances/gr17.txt
 
 ## Make MpiApp and run with quinze.txt instance
 run-mpi-quinze: mpiapp
-	./main 4 15 instances/quinze.txt
+	mpiexec -np 4 ./main 4 15 instances/quinze.txt
 
 ## Commands
 help:

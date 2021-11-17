@@ -69,8 +69,8 @@ void ProcessSplit(int root_node, int num_process, stack** stacks, graph* graph_t
   int n_nodes = NumNodes(graph_t);
   int stack_size = n_nodes * n_nodes;
 
-  InitializeStacks(root_node, num_process, stack_size, stacks, graph_t);
-  FillStacks(root_node, num_process, stack_size, stacks, graph_t);
+  InitializeStacks2(root_node, num_process, stack_size, stacks, graph_t);
+  FillStacks2(root_node, num_process, stack_size, stacks, graph_t);
 }
 
 
@@ -105,57 +105,76 @@ int main(int argc, char** argv) {
   int num_process, process_rank;
 
   if (argc < 4) {
-    printf("Missing parameters.\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
+    printf("Missing parameters..\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
     exit(-1); 
   }
 
-  threads_num = atoi(argv[1]);
-  n_cities = atoi(argv[2]);
-  char* path_to_matrix_file = argv[3];
+  MPI_Init(&argc, &argv);
 
-  InitializeInstance(path_to_matrix_file);
+  MPI_Comm_size(MPI_COMM_WORLD, &num_process);
+  MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
 
-  ShowMatrix(n_cities, adj_m);
+  if (process_rank == 0) {
+      threads_num = atoi(argv[1]);
+      n_cities = atoi(argv[2]);
+      char* path_to_matrix_file = argv[3];
 
-  // MPI_Init(&argc, &argv);
+      InitializeInstance(path_to_matrix_file);
 
-  // MPI_Comm_size(MPI_COMM_WORLD, &num_process);
-  // MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
+      ShowMatrix(n_cities, adj_m);
+
+      graph_t = CreateGraph(n_cities, nodes, adj_m);
+
+      best_tour = CreateTour(n_cities + 1);
+      stack_size = (n_cities*n_cities)/2;
+      stack* threads_stacks[threads_num];
+
+      term_t = CreateTerm();
+
+      stack* process_stacks[num_process];
+      ProcessSplit(HOMETOWN, num_process, process_stacks, graph_t);
+
+      for (int i=0; i<num_process; i++) {
+        PrintStackInfo(process_stacks[i]);
+      }
+
+      for(int i=0; i < num_process; i++) {
+        FreeStack(process_stacks[i]);
+      }
+
+      FreeGraph(graph_t);
+  }
+  else {
+      printf("[Process %d]\n", process_rank);
+  }
+
+  MPI_Finalize();
+  return 0;
+
+  // for (int i=0; i<num_process; i++) {
+  //   PrintStackInfo(process_stacks[i]);
+  // }
+  
 
   // MPI_Bcast(&n_cities, 1, MPI_INT, 0, MPI_COMM_WORLD);
   // MPI_Bcast(&nodes, n_cities, MPI_INT, 0, MPI_COMM_WORLD);
 
-  graph_t = CreateGraph(n_cities, nodes, adj_m);
-
-  // stack* process_stacks[num_process];
-  // ProcessSplit(HOMETOWN, num_process, process_stacks, graph_t);
+  // PrintStackInfo(process_stacks[process_rank]);
+  
 
   // stack* process_stack = process_stacks[process_rank];
   // PrintStackInfo(process_stack);
 
-  best_tour = CreateTour(n_cities + 1);
-  stack_size = (n_cities*n_cities)/2;
-  stack* threads_stacks[threads_num];
+  // pthread_mutex_init(&execute_mutex, NULL);
 
-  term_t = CreateTerm();
+  // ThreadsSplit(HOMETOWN, threads_num, threads_stacks, graph_t);
 
-  pthread_mutex_init(&execute_mutex, NULL);
+  // printf("\nBEST TOUR: \n");
+  // PrintTourInfo(best_tour);
 
-  ThreadsSplit(HOMETOWN, threads_num, threads_stacks, graph_t);
-
-  printf("\nBEST TOUR: \n");
-  PrintTourInfo(best_tour);
-
-  // for(int i=0; i < num_process; i++) {
-  //   FreeStack(process_stacks[i]);
+  // for(int i=0; i < threads_num; i++) {
+  //   FreeStack(threads_stacks[i]);
   // }
 
-  for(int i=0; i < threads_num; i++) {
-    FreeStack(threads_stacks[i]);
-  }
-
-  FreeGraph(graph_t);
-
   // MPI_Finalize();
-  return 0;
 }
