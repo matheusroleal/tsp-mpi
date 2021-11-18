@@ -123,6 +123,22 @@ void CopyTour(tour* dest, tour* orig) {
   dest->cost = orig->cost;
 }
 
+int * GetCitiesInTour(tour* tour_t) {
+  int * cities = (int*) calloc (tour_t->max_cities, sizeof(int));
+  for (int i=0; i < tour_t->max_cities; i++) {
+    cities[i] = tour_t->cities[i];
+  }
+
+  return cities;
+}
+
+void AddCitiesToTour(tour* tour_t, graph* graph_t, int* cities, int max_cities) {
+  for (int i=0; i < max_cities; i++) {
+    if (cities[i] != -1)
+      AddCity(tour_t, graph_t, cities[i]);
+  }
+}
+
 // Just for debugging
 void PrintTourInfo(tour* tour_t) {
   for (int i=0; i < tour_t->max_cities; i++) {

@@ -24,6 +24,10 @@ int GetTourNumberCities(tour* tour_t);
 
 int GetTourCost(tour* tour_t);
 
+int * GetCitiesInTour(tour* tour_t);
+
+void AddCitiesToTour(tour* tour_t, graph* graph_t, int* cities, int max_cities);
+
 void CopyTour(tour* dest, tour* orig);
 
 // Just for debugging

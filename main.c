@@ -109,33 +109,54 @@ int main(int argc, char** argv) {
     exit(-1); 
   }
 
-  MPI_Init(&argc, &argv);
+  // Read parameters
+  threads_num = atoi(argv[1]);
+  n_cities = atoi(argv[2]);
+  char* path_to_matrix_file = argv[3];
 
+  // Initialize Graph
+  InitializeInstance(path_to_matrix_file);
+  graph_t = CreateGraph(n_cities, nodes, adj_m);
+
+  // Initializa MPI
+  MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &num_process);
   MPI_Comm_rank(MPI_COMM_WORLD, &process_rank);
 
   if (process_rank == 0) {
-      threads_num = atoi(argv[1]);
-      n_cities = atoi(argv[2]);
-      char* path_to_matrix_file = argv[3];
-
-      InitializeInstance(path_to_matrix_file);
 
       ShowMatrix(n_cities, adj_m);
 
-      graph_t = CreateGraph(n_cities, nodes, adj_m);
+      // best_tour = CreateTour(n_cities + 1);
+      // stack_size = (n_cities*n_cities)/2;
+      // stack* threads_stacks[threads_num];
+      // term_t = CreateTerm();
 
-      best_tour = CreateTour(n_cities + 1);
-      stack_size = (n_cities*n_cities)/2;
-      stack* threads_stacks[threads_num];
-
-      term_t = CreateTerm();
-
+      // Create stacks for each process
       stack* process_stacks[num_process];
       ProcessSplit(HOMETOWN, num_process, process_stacks, graph_t);
 
-      for (int i=0; i<num_process; i++) {
-        PrintStackInfo(process_stacks[i]);
+      // Send stack for each process
+      for (int i=1; i<num_process; i++) {
+        printf("Sending stack to process %d\n", i);
+
+        // Send size of stack
+        int current_stack_size = GetSize(process_stacks[i]);
+        MPI_Send(&current_stack_size, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+
+        // Pop tours into another stack to reverse the order
+        tour** stack_tours = (tour**) calloc (current_stack_size, sizeof(tour*));
+        for (int j=current_stack_size-1; j>=0; j--) {
+          stack_tours[j] = Pop(process_stacks[i]);
+        }
+
+        // For each tour in stack
+        for (int j=0; j<current_stack_size; j++) {
+            // Send array of cities in tour
+            int * cities_in_tour = GetCitiesInTour(stack_tours[j]);
+
+            MPI_Send(cities_in_tour, n_cities+1, MPI_INT, i, j, MPI_COMM_WORLD);
+        }
       }
 
       for(int i=0; i < num_process; i++) {
@@ -145,15 +166,37 @@ int main(int argc, char** argv) {
       FreeGraph(graph_t);
   }
   else {
-      printf("[Process %d]\n", process_rank);
+      printf("[Process %d] Waiting for stack..\n", process_rank);
+
+      MPI_Status receive_status;
+      int size_of_my_stack;
+      MPI_Recv(&size_of_my_stack, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &receive_status);
+
+      printf("[Process %d] Size of my stack: %d, Size of each tour: %d\n", process_rank, size_of_my_stack, n_cities+1);
+
+  	  stack * my_stack = CreateStack(n_cities+1);
+      for (int j=0; j<size_of_my_stack; j++) {
+
+          // Create tour
+          tour * current_tour = CreateTour(n_cities+1);
+          int * cities_in_tour = calloc(n_cities+1, sizeof(int));
+
+          // Receive cities
+          MPI_Recv(cities_in_tour, n_cities+1, MPI_INT, 0, j, MPI_COMM_WORLD, &receive_status);
+
+          // Set cities to tour
+          AddCitiesToTour(current_tour, graph_t, cities_in_tour, n_cities+1);
+
+          // Push tour to stack
+          PushCopy(my_stack, current_tour);
+      }
+
+      printf("[Process %d] Received my stack:\n", process_rank);
+      PrintStackInfo(my_stack);
   }
 
   MPI_Finalize();
   return 0;
-
-  // for (int i=0; i<num_process; i++) {
-  //   PrintStackInfo(process_stacks[i]);
-  // }
   
 
   // MPI_Bcast(&n_cities, 1, MPI_INT, 0, MPI_COMM_WORLD);
