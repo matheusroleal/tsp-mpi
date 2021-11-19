@@ -133,7 +133,7 @@ void InitializeStacks(int root_node, int n_stacks, int stack_size, stack* stacks
   }
 }
 
-void InitializeStacks2(int root_node, int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t) {
+void InitializeProcessStacks(int root_node, int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t) {
   for(int i=0; i < n_stacks; i++) {
     stacks[i] = CreateStack(stack_size);
   }
@@ -171,7 +171,7 @@ void FillStacks(int root_node, int num_threads, int stack_size, stack* stacks[nu
 }
 
 
-void FillStacks2(int root_node, int num_threads, int stack_size, stack* stacks[num_threads], graph* graph_t) {
+void FillProcessStacks(int root_node, int num_threads, int stack_size, stack* stacks[num_threads], graph* graph_t) {
   float nbr_cost;
   int num_nodes = NumNodes(graph_t);
   int current_node;
