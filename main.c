@@ -34,16 +34,16 @@ void* execute(void* arg) {
   pthread_exit(NULL);
 }
 
-void ThreadsSplit(int root_node, int num_threads, stack** stacks, graph* graph_t) {
+void ThreadsSplit(stack* initial_stack, int num_threads, stack** threads_stacks, graph* graph_t) {
   int error;
   int n_nodes = NumNodes(graph_t);
   int stack_size = n_nodes * n_nodes;
 
-  InitializeStacks(root_node, num_threads, stack_size, stacks, graph_t);
-  FillStacks(root_node, num_threads, stack_size, stacks, graph_t);
+  InitializeThreadStacks(num_threads, stack_size, threads_stacks, graph_t);
+  FillThreadStacks(initial_stack, num_threads, stack_size, threads_stacks, graph_t);
 
   for(int i=0; i < num_threads; i++) {
-    PrintStackInfo(stacks[i]);
+    PrintStackInfo(threads_stacks[i]);
   }
 
   pthread_t* workers = (pthread_t*) calloc (threads_num, sizeof(pthread_t));
@@ -52,7 +52,7 @@ void ThreadsSplit(int root_node, int num_threads, stack** stacks, graph* graph_t
   }
 
   for(int i=0; i < num_threads; i++) {
-    error = pthread_create(&workers[i], NULL, &execute, (void*)stacks[i]);
+    error = pthread_create(&workers[i], NULL, &execute, (void*)threads_stacks[i]);
     if(error) { 
       printf("Failed to create thread: %lu\n", (long)workers[i]); 
       exit(-1); 
@@ -184,11 +184,6 @@ int main(int argc, char** argv) {
 
       ShowMatrix(n_cities, adj_m);
 
-      // best_tour = CreateTour(n_cities + 1);
-      // stack_size = (n_cities*n_cities)/2;
-      // stack* threads_stacks[threads_num];
-      // term_t = CreateTerm();
-
       // Create stacks for each process
       stack* process_stacks[num_process-1];
       ProcessSplit(HOMETOWN, num_process-1, process_stacks, graph_t);
@@ -215,9 +210,20 @@ int main(int argc, char** argv) {
 
       printf("[Process %d] Received my stack:\n", process_rank);
       PrintStackInfo(my_stack);
-      // Divide my stack into different threads
 
-      // Start threads
+      // Split my stack into different threads and start
+      best_tour = CreateTour(n_cities + 1);
+      stack_size = (n_cities*n_cities)/2;
+      stack* threads_stacks[threads_num];
+      term_t = CreateTerm();
+
+      pthread_mutex_init(&execute_mutex, NULL);
+      sleep(process_rank);
+      ThreadsSplit(my_stack, threads_num, threads_stacks, graph_t);
+
+      printf("\n[Process %d] BEST TOUR: \n", process_rank);
+      PrintTourInfo(best_tour);
+
     }
 
     MPI_Finalize();
@@ -234,17 +240,6 @@ int main(int argc, char** argv) {
   // MPI_Bcast(&nodes, n_cities, MPI_INT, 0, MPI_COMM_WORLD);
 
   // PrintStackInfo(process_stacks[process_rank]);
-  
-
-  // stack* process_stack = process_stacks[process_rank];
-  // PrintStackInfo(process_stack);
-
-  // pthread_mutex_init(&execute_mutex, NULL);
-
-  // ThreadsSplit(HOMETOWN, threads_num, threads_stacks, graph_t);
-
-  // printf("\nBEST TOUR: \n");
-  // PrintTourInfo(best_tour);
 
   // for(int i=0; i < threads_num; i++) {
   //   FreeStack(threads_stacks[i]);

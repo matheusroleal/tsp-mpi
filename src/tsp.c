@@ -221,3 +221,56 @@ void FillProcessStacks(int root_node, int num_threads, int stack_size, stack* st
   }
 
 }
+
+void InitializeThreadStacks(int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t) {
+  for(int i=0; i < n_stacks; i++) {
+    stacks[i] = CreateStack(stack_size);
+  }
+}
+
+void FillThreadStacks(stack* initial_stack, int num_threads, int stack_size, stack* stacks[num_threads], graph* graph_t) {
+  float nbr_cost;
+  int num_nodes = NumNodes(graph_t);
+  int current_node;
+  tour* current_tour;
+  stack* current_stack;
+  Queue * tours_queue = CreateQueue();
+
+  // Creating queue of tours from initial stack
+  while(!Empty(initial_stack)) {
+    tour* current_tour = Pop(initial_stack);
+    enQueue(tours_queue, (void*) current_tour);
+  }
+
+  while(GetQueueSize(tours_queue) < num_threads) {
+      
+    // Pop tour from queue
+    current_tour = (tour*) deQueue(tours_queue);
+    current_node = GetTourLastCity(current_tour);
+
+    for(int nbr=0; nbr < num_nodes; nbr++) {
+      nbr_cost = GetEdgeWeight(graph_t, current_node, nbr);
+      if (nbr == current_node || nbr_cost == 0.0 || TourContainCityOrHometown(current_tour, nbr)) {
+        continue;
+      }
+
+      // Create new tour from current tour
+      tour * new_tour = CreateTour(num_nodes+1);
+      CopyTour(new_tour, current_tour);
+      AddCity(new_tour, graph_t, nbr);
+
+      enQueue(tours_queue, (void*) new_tour);
+    }
+  }
+
+  // Insert tour from queue into stacks
+  int stack_index = 0;
+  while (GetQueueSize(tours_queue) > 0) {
+    current_tour = (tour*) deQueue(tours_queue);
+    current_stack = stacks[stack_index % num_threads];
+
+    PushCopy(current_stack, current_tour);
+
+    stack_index++;
+  }
+}
