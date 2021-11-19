@@ -8,11 +8,12 @@
 #include "headers/tsp.h"
 #include "headers/utils.h"
 #include <unistd.h>
+#include <float.h>
 
 
 
 #define HOMETOWN 0
-
+#define GLOBA_BEST_COST_TAG 10
 // Global for graph
 int n_cities;
 int* nodes;
@@ -20,16 +21,18 @@ float** adj_m;
 
 // Global for all threads
 tour* best_tour;
+float best_tour_cost;
 graph* graph_t;
 int stack_size;
 pthread_mutex_t execute_mutex;
 term* term_t;
 int threads_num;
+int num_process, process_rank;
 
 void* execute(void* arg) {
   stack* my_stack = (stack*)arg;
 
-  EvaluateTours(my_stack, graph_t, best_tour, execute_mutex, term_t, NumNodes(graph_t), HOMETOWN, threads_num);
+  EvaluateTours(my_stack, graph_t, best_tour, &best_tour_cost, execute_mutex, term_t, NumNodes(graph_t), HOMETOWN, threads_num, num_process, process_rank);
 
   pthread_exit(NULL);
 }
@@ -156,7 +159,6 @@ stack* ReceiveStack(int process_rank) {
 }
 
 int main(int argc, char** argv) {
-  int num_process, process_rank;
 
   if (argc < 4) {
     printf("Missing parameters..\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
@@ -191,12 +193,6 @@ int main(int argc, char** argv) {
       // Send stack for each process
       SendStacks(process_stacks, num_process-1);
 
-      // Wait for best tour
-      sleep(10);
-
-      // printf("\nBEST TOUR: \n");
-      // PrintTourInfo(best_tour);
-
       for(int i=0; i < num_process-1; i++) {
         FreeStack(process_stacks[i]);
       }
@@ -216,18 +212,15 @@ int main(int argc, char** argv) {
       stack_size = (n_cities*n_cities)/2;
       stack* threads_stacks[threads_num];
       term_t = CreateTerm();
+      best_tour_cost = FLT_MAX;
 
       pthread_mutex_init(&execute_mutex, NULL);
-      sleep(process_rank);
+      // sleep(process_rank*process_rank);
       ThreadsSplit(my_stack, threads_num, threads_stacks, graph_t);
 
-      printf("\n[Process %d] BEST TOUR: \n", process_rank);
-      PrintTourInfo(best_tour);
+      printf("[Process %d] MY BEST TOUR: %f\n", process_rank, GetTourCost(best_tour));
 
     }
-
-    MPI_Finalize();
-    return 0;
   }
   else {
     // only 1 process, do all work by itself
@@ -235,15 +228,38 @@ int main(int argc, char** argv) {
     return 0;
   }
   
+  // struct data_t {
+  //   int cost;
+  //   int rank;
+  // } data;
 
-  // MPI_Bcast(&n_cities, 1, MPI_INT, 0, MPI_COMM_WORLD);
-  // MPI_Bcast(&nodes, n_cities, MPI_INT, 0, MPI_COMM_WORLD);
+  // data * loc_data = (data *)
 
-  // PrintStackInfo(process_stacks[process_rank]);
+  // loc_data.cost = GetTourCost(best_tour);
+  // loc_data.rank = process_rank;
 
-  // for(int i=0; i < threads_num; i++) {
-  //   FreeStack(threads_stacks[i]);
+  // MPI_Allreduce(&loc_data, &global_data, 1, MPI_2INT, MPI_MINLOC, MPI_COMM_WORLD);
+  // if (global_data.rank == 0)
+  //   return 0;
+  // else if (process_rank == 0) {
+  //   // receive best cost from global_data.rank
+  //   float best_global_tour;
+  //   MPI_Status receive_status;
+  //   MPI_Recv(&best_global_tour, 1, MPI_FLOAT, global_data.rank, GLOBA_BEST_COST_TAG, MPI_COMM_WORLD, &receive_status);
+
+  //   printf("\n[Process %d] BEST GLOBAL COST RECEIVED: %f\n", process_rank, best_global_tour);
+
+  // }
+  // else if (process_rank == global_data.rank){
+  //   printf("\n[Process %d] SENDING BEST COST: %f\n", process_rank, loc_data.cost);
+  //   // send best cost to process 0
+  //   float global_best_cost = loc_data.cost;
+  //   MPI_Send(&global_best_cost, 1, MPI_FLOAT, 0, GLOBA_BEST_COST_TAG, MPI_COMM_WORLD);
+  
+  // } else {
+  //   printf("[Process %d] ERROR CALCULATING BEST TOUR TO SEND\n", process_rank);
   // }
 
-  // MPI_Finalize();
+  MPI_Finalize();
+  return 0;
 }

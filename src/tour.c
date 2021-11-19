@@ -109,7 +109,7 @@ int GetTourNumberCities(tour* tour_t) {
   return tour_t->n_cities;
 }
 
-int GetTourCost(tour* tour_t) {
+float GetTourCost(tour* tour_t) {
   return tour_t->cost;
 }
 
@@ -137,6 +137,10 @@ void AddCitiesToTour(tour* tour_t, graph* graph_t, int* cities, int max_cities) 
     if (cities[i] != -1)
       AddCity(tour_t, graph_t, cities[i]);
   }
+}
+
+void SetTourCost(tour* tour_t, float new_cost) {
+  tour_t->cost = new_cost;
 }
 
 // Just for debugging

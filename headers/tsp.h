@@ -8,7 +8,7 @@ typedef struct term_t term;
 
 term* CreateTerm();
 
-void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, pthread_mutex_t evaluate_mutex, term* term_t, int n_cities, int hometown, int num_threads);
+void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, float* best_tour_cost, pthread_mutex_t evaluate_mutex, term* term_t, int n_cities, int hometown, int num_threads, int num_processes, int my_process_rank);
 
 void InitializeStacks(int root_node, int n_stacks, int stack_size, stack* stacks[n_stacks], graph* graph_t);
 

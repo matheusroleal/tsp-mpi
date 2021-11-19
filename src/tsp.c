@@ -1,7 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <mpi.h>
 #include "../headers/tsp.h"
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
+#define NEW_COST_TAG 2
 struct term_t {
   stack* new_stack;
   int threads_in_cond_wait;
@@ -79,25 +84,105 @@ int Termination(stack* my_stack, term* term_t, int num_threads) {
   }
 }
 
-void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, pthread_mutex_t evaluate_mutex, term* term_t, int n_cities, int hometown, int num_threads) {
-  tour* current_tour;
+void UpdateBestTour(tour* old_best_tour, tour* new_best_tour, float* global_best_cost, int num_processes, int my_process_rank, int thread_id) {
 
+    // Checking again inside mutex
+    if (BestTour(new_best_tour, old_best_tour)) {
+
+      printf("[Process %d][Thread %d] Update local best tour!\n", my_process_rank, thread_id);
+      PrintTourInfo(new_best_tour);
+
+      // Update value in this process
+      CopyTour(old_best_tour, new_best_tour);
+
+      float local_best_cost = GetTourCost(new_best_tour);
+
+      // Check if is also best global tour
+      if (local_best_cost < *global_best_cost) {
+        // Update global best cost
+        *global_best_cost = local_best_cost;
+
+        // Send update to other processes
+        // Prepare buffer for sending the best cost
+        int data_size;
+        int message_size;
+        int send_buffer_size;
+        int total_buffer_size;
+        MPI_Pack_size(1, MPI_FLOAT, MPI_COMM_WORLD, &data_size);
+        message_size = data_size + MPI_BSEND_OVERHEAD;
+        send_buffer_size = (num_processes-1) * message_size;
+        total_buffer_size = send_buffer_size;
+
+        char *send_buffer;
+        send_buffer = (char *) calloc (total_buffer_size, sizeof(char));
+        MPI_Buffer_attach(send_buffer, total_buffer_size);
+        printf("\n[Process %d] [Thread %d] Buffer attached! Size: %d , buffer: %p\n", my_process_rank, thread_id, total_buffer_size, send_buffer);
+        
+        for (int i=1; i<num_processes; i++) {
+          if (i != my_process_rank) {
+            printf("[Process %d][Thread %d] Sending best cost %f to process %d!\n", my_process_rank, thread_id, local_best_cost, i);
+            MPI_Bsend(&local_best_cost, 1, MPI_FLOAT, i, NEW_COST_TAG, MPI_COMM_WORLD);
+          }
+        }
+
+        printf("\n[Process %d][Thread %d] Waiting to detach buffer... \n", my_process_rank, thread_id);
+        char * buf;
+        int buf_size;
+        MPI_Buffer_detach(&buf, &buf_size);
+        printf("\n[Process %d][Thread %d] Buffer detached! Size: %d , buffer: %p\n", my_process_rank, thread_id, buf_size, buf);
+      }
+
+
+    }
+
+}
+
+void CheckForReceivedBestTour(float * global_best_cost, int my_process_rank, int thread_id) {
+  int message_available = 0;
+  MPI_Status status;
+  printf("[Process %d][Thread %d] Checking if there is any message to receive...\n", my_process_rank, thread_id);
+  MPI_Iprobe(MPI_ANY_SOURCE, NEW_COST_TAG, MPI_COMM_WORLD, &message_available, &status);
+
+  while (message_available) {
+    float received_new_best_cost;
+    printf("[Process %d][Thread %d] Receiving best cost from process %d!\n", my_process_rank, thread_id, status.MPI_SOURCE);
+    MPI_Recv(&received_new_best_cost, 1, MPI_FLOAT, status.MPI_SOURCE, NEW_COST_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    if (received_new_best_cost < *global_best_cost) {
+      // SetTourCost(local_best_tour, received_new_best_cost);
+      // ATUALIZAR O BEST TOUR GLOBAL AQUI
+      *global_best_cost = received_new_best_cost;
+    }
+    MPI_Iprobe(MPI_ANY_SOURCE, NEW_COST_TAG, MPI_COMM_WORLD, &message_available, &status);
+  }
+}
+
+void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, float* best_tour_cost, pthread_mutex_t evaluate_mutex, term* term_t, int n_cities, int hometown, int num_threads, int num_processes, int my_process_rank) {
+  tour* current_tour;
+  pid_t thread_id = syscall(__NR_gettid);
+  printf("[Process %d][Thread %d] ======= STARTING TO EVALUATE TOURS ======\n", my_process_rank, thread_id);
   while(!Termination(stack_t, term_t, num_threads)) {
     current_tour = Pop(stack_t);
 
+    CheckForReceivedBestTour(best_tour_cost, my_process_rank, thread_id);
+
     if(GetTourNumberCities(current_tour) == n_cities) {
+      printf("[Process %d][Thread %d] (global_best_tour=%f) Complete tour popped: \n", my_process_rank, thread_id, *best_tour_cost);
+      PrintTourInfo(current_tour);
+      printf("[Process %d][Thread %d] ------------- \n", my_process_rank, thread_id);
       // add hometown to current tour to compute the final cost
       AddCity(current_tour, graph_t, hometown);
 
+
       if(BestTour(current_tour, best_tour)) {
         pthread_mutex_lock(&evaluate_mutex);
-
-        printf("Update best tour!\n");
-        PrintTourInfo(current_tour);
-        CopyTour(best_tour, current_tour);
+        // sleep(2);
+        UpdateBestTour(best_tour, current_tour, best_tour_cost, num_processes, my_process_rank, thread_id);
+        // sleep(2);
 
         pthread_mutex_unlock(&evaluate_mutex);
       }
+      // printf("aqui1\n");
     } else {
       for (int nbr=n_cities-1; nbr >= 0; nbr--) {
         // dont go back to hometown, with this we can set hometown to any city
@@ -109,9 +194,11 @@ void EvaluateTours(stack* stack_t, graph* graph_t, tour* best_tour, pthread_mute
           RemoveLastCity(current_tour, graph_t);
         }
       }
+      // printf("aqui2\n");
     }
     FreeTour(current_tour);
   }
+  printf("[Process %d][Thread %d] ======= FINISHED EVALUATING TOURS ======\n", my_process_rank, thread_id);
 }
 
 int AnyStackNotFilled(int num_threads, stack* stacks[num_threads]) {
