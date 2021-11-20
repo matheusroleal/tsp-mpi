@@ -33,7 +33,7 @@ graph: ./src/graph.c ./headers/graph.h
 	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o
 
 tsp: ./src/tsp.c ./headers/tsp.h
-	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o
+	mpicc $(CFLAGS) -c $< -o ./src/obj/$@.o
 
 utils: ./src/utils.c ./headers/utils.h
 	gcc $(CFLAGS) -c $< -o ./src/obj/$@.o

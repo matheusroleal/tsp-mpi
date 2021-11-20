@@ -13,7 +13,7 @@
 
 
 #define HOMETOWN 0
-#define GLOBA_BEST_COST_TAG 10
+#define GLOBAL_BEST_COST_TAG 10
 // Global for graph
 int n_cities;
 int* nodes;
@@ -137,7 +137,7 @@ stack* ReceiveStack(int process_rank) {
   int size_of_my_stack;
   MPI_Recv(&size_of_my_stack, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &receive_status);
 
-  printf("[Process %d] Size of my stack: %d, Size of each tour: %d\n", process_rank, size_of_my_stack, n_cities+1);
+  // printf("[Process %d] Size of my stack: %d, Size of each tour: %d\n", process_rank, size_of_my_stack, n_cities+1);
 
   stack * my_stack = CreateStack(n_cities+1);
   for (int j=0; j<size_of_my_stack; j++) {
@@ -197,14 +197,14 @@ int main(int argc, char** argv) {
         FreeStack(process_stacks[i]);
       }
 
-      FreeGraph(graph_t);
+      sleep(5);
     }
     else {
-      printf("[Process %d] Waiting for stack..\n", process_rank);
-      sleep(1);
+      // printf("[Process %d] Waiting for stack..\n", process_rank);
+      // sleep(1);
       stack * my_stack = ReceiveStack(process_rank);
 
-      printf("[Process %d] Received my stack:\n", process_rank);
+      // printf("[Process %d] Received my stack:\n", process_rank);
       PrintStackInfo(my_stack);
 
       // Split my stack into different threads and start
@@ -218,8 +218,6 @@ int main(int argc, char** argv) {
       // sleep(process_rank*process_rank);
       ThreadsSplit(my_stack, threads_num, threads_stacks, graph_t);
 
-      printf("[Process %d] MY BEST TOUR: %f\n", process_rank, GetTourCost(best_tour));
-
     }
   }
   else {
@@ -228,37 +226,52 @@ int main(int argc, char** argv) {
     return 0;
   }
   
-  // struct data_t {
-  //   int cost;
-  //   int rank;
-  // } data;
+  struct {
+    int cost;
+    int rank;
+  } local_data;
 
-  // data * loc_data = (data *)
+  struct {
+    int cost;
+    int rank;
+  } global_data;
 
-  // loc_data.cost = GetTourCost(best_tour);
-  // loc_data.rank = process_rank;
+  if (process_rank != 0)
+    local_data.cost = (int) GetTourCost(best_tour);
+  else
+    local_data.cost = (int) FLT_MAX;
+  local_data.rank = process_rank;
 
-  // MPI_Allreduce(&loc_data, &global_data, 1, MPI_2INT, MPI_MINLOC, MPI_COMM_WORLD);
-  // if (global_data.rank == 0)
-  //   return 0;
-  // else if (process_rank == 0) {
-  //   // receive best cost from global_data.rank
-  //   float best_global_tour;
-  //   MPI_Status receive_status;
-  //   MPI_Recv(&best_global_tour, 1, MPI_FLOAT, global_data.rank, GLOBA_BEST_COST_TAG, MPI_COMM_WORLD, &receive_status);
-
-  //   printf("\n[Process %d] BEST GLOBAL COST RECEIVED: %f\n", process_rank, best_global_tour);
-
-  // }
-  // else if (process_rank == global_data.rank){
-  //   printf("\n[Process %d] SENDING BEST COST: %f\n", process_rank, loc_data.cost);
-  //   // send best cost to process 0
-  //   float global_best_cost = loc_data.cost;
-  //   MPI_Send(&global_best_cost, 1, MPI_FLOAT, 0, GLOBA_BEST_COST_TAG, MPI_COMM_WORLD);
+  MPI_Allreduce(&local_data, &global_data, 1, MPI_2INT, MPI_MINLOC, MPI_COMM_WORLD);
   
-  // } else {
-  //   printf("[Process %d] ERROR CALCULATING BEST TOUR TO SEND\n", process_rank);
-  // }
+  if (global_data.rank == 0) {
+    MPI_Finalize();
+    return 0;
+  }
+  else if (process_rank == 0) {
+    // receive best cost from global_data.rank
+    int * cities_in_tour = calloc(n_cities+1, sizeof(int));
+    MPI_Status receive_status;
+    MPI_Recv(cities_in_tour, n_cities + 1, MPI_INT, global_data.rank, GLOBAL_BEST_COST_TAG, MPI_COMM_WORLD, &receive_status);
+
+    // Create tour
+    tour * best_global_tour  = CreateTour(n_cities+1);
+
+    // Set cities to tour
+    AddCitiesToTour(best_global_tour, graph_t, cities_in_tour, n_cities+1);
+
+    sleep(1);
+    printf("\n[Process %d] BEST GLOBAL TOUR RECEIVED:\n", process_rank);
+    PrintTourInfo(best_global_tour);
+
+    FreeGraph(graph_t);
+
+  } else if (process_rank == global_data.rank) {
+
+    // Send array of cities in tour to process 0
+    int * cities_in_tour = GetCitiesInTour(best_tour);
+    MPI_Send(cities_in_tour, n_cities+1, MPI_INT, 0, GLOBAL_BEST_COST_TAG, MPI_COMM_WORLD);
+  } 
 
   MPI_Finalize();
   return 0;
