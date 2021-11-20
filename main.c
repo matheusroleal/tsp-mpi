@@ -255,7 +255,6 @@ int main(int argc, char** argv) {
     // Set cities to tour
     AddCitiesToTour(best_global_tour, graph_t, cities_in_tour, n_cities+1);
 
-    sleep(1);
     printf("\n[Process %d] BEST GLOBAL TOUR RECEIVED:\n", process_rank);
     PrintTourInfo(best_global_tour);
 
