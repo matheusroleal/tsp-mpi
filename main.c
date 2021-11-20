@@ -9,6 +9,7 @@
 #include "headers/utils.h"
 #include <unistd.h>
 #include <float.h>
+#include <time.h>
 
 
 
@@ -137,8 +138,6 @@ stack* ReceiveStack(int process_rank) {
   int size_of_my_stack;
   MPI_Recv(&size_of_my_stack, 1, MPI_INT, 0, MPI_ANY_TAG, MPI_COMM_WORLD, &receive_status);
 
-  // printf("[Process %d] Size of my stack: %d, Size of each tour: %d\n", process_rank, size_of_my_stack, n_cities+1);
-
   stack * my_stack = CreateStack(n_cities+1);
   for (int j=0; j<size_of_my_stack; j++) {
 
@@ -164,6 +163,8 @@ int main(int argc, char** argv) {
     printf("Missing parameters..\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
     exit(-1); 
   }
+
+  clock_t start = clock();
 
   // Read parameters
   threads_num = atoi(argv[1]);
@@ -200,12 +201,7 @@ int main(int argc, char** argv) {
       sleep(5);
     }
     else {
-      // printf("[Process %d] Waiting for stack..\n", process_rank);
-      // sleep(1);
       stack * my_stack = ReceiveStack(process_rank);
-
-      // printf("[Process %d] Received my stack:\n", process_rank);
-      PrintStackInfo(my_stack);
 
       // Split my stack into different threads and start
       best_tour = CreateTour(n_cities + 1);
@@ -215,7 +211,6 @@ int main(int argc, char** argv) {
       best_tour_cost = FLT_MAX;
 
       pthread_mutex_init(&execute_mutex, NULL);
-      // sleep(process_rank*process_rank);
       ThreadsSplit(my_stack, threads_num, threads_stacks, graph_t);
 
     }
@@ -263,6 +258,9 @@ int main(int argc, char** argv) {
     sleep(1);
     printf("\n[Process %d] BEST GLOBAL TOUR RECEIVED:\n", process_rank);
     PrintTourInfo(best_global_tour);
+
+    clock_t end = clock();
+    printf("\n[Process %d] Total execution time (ms): %f\n", process_rank, (double)(end - start) / CLOCKS_PER_SEC);
 
     FreeGraph(graph_t);
 

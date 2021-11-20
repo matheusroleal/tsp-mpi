@@ -84,6 +84,10 @@ run-mpi-gr17: mpiapp
 run-mpi-quinze: mpiapp
 	mpiexec -np 4 ./main 4 15 instances/quinze.txt
 
+## Make MpiApp and run with doze.txt instance
+run-mpi-doze: mpiapp
+	mpiexec -np 4 ./main 4 15 instances/doze.txt
+
 ## Commands
 help:
 	printf "\n${COLOR_YELLOW}${PROJECT}\n--------------------\n${COLOR_RESET}"

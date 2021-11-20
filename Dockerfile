@@ -11,9 +11,3 @@ RUN apt-get update && \
     apt-get -y install gcc libopenmpi-dev python-pip
 RUN pip install mpi4py
 
-# ADD headers /app/headers
-# ADD src /app/src
-# ADD instances /app/instances
-
-# COPY main.c /app/
-# COPY Makefile /app/
