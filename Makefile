@@ -61,15 +61,15 @@ mpiapp:
 	mpicc -pthread -o main main.c $(OBJ_FILES)
 
 ## Make MpiApp and run with cinco.txt instance
-run-mpi-cinco: mpiapp
+run-mpi-5: mpiapp
 	./main 4 5 instances/cinco.txt
 
 ## Make MpiApp and run with gr17.txt instance
-run-mpi-gr17: mpiapp
+run-mpi-17: mpiapp
 	./main 4 17 instances/gr17.txt
 
 ## Make MpiApp and run with quinze.txt instance
-run-mpi-quinze: mpiapp
+run-mpi-15: mpiapp
 	./main 4 15 instances/quinze.txt
 
 ## Commands

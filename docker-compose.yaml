@@ -4,6 +4,6 @@ services:
         build:
           context: .
         container_name: tsp-parallel
-        command: make run-mpi-cinco
+        command: make run-mpi-5
         volumes:
             - .:/app

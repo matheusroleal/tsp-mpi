@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <mpi.h>
+#include <sys/time.h>
 #include "headers/tour.h"
 #include "headers/stack.h"
 #include "headers/graph.h"
@@ -103,6 +104,8 @@ void InitializeInstance(char * path_matrix_file) {
 
 int main(int argc, char** argv) {
   int num_process, process_rank;
+  struct timeval t1, t2;
+  double elapsedTime;
 
   if (argc < 4) {
     printf("Missing parameters.\nUsage: ./main <num_threads> <num_cities> <path_to_matrix_file>\n"); 
@@ -133,6 +136,9 @@ int main(int argc, char** argv) {
   // stack* process_stack = process_stacks[process_rank];
   // PrintStackInfo(process_stack);
 
+  // start timer
+  gettimeofday(&t1, NULL);
+
   best_tour = CreateTour(n_cities + 1);
   stack_size = (n_cities*n_cities)/2;
   stack* threads_stacks[threads_num];
@@ -142,9 +148,16 @@ int main(int argc, char** argv) {
   pthread_mutex_init(&execute_mutex, NULL);
 
   ThreadsSplit(HOMETOWN, threads_num, threads_stacks, graph_t);
-
+  
+  // stop timer
+  gettimeofday(&t2, NULL);
+  
   printf("\nBEST TOUR: \n");
   PrintTourInfo(best_tour);
+
+  // compute and print the elapsed time in millisec
+  elapsedTime += (t2.tv_usec - t1.tv_usec) / 1000.0;   // us to ms
+  printf("%f ms.\n", elapsedTime);
 
   // for(int i=0; i < num_process; i++) {
   //   FreeStack(process_stacks[i]);
